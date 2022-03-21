@@ -15,7 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const component = "robot-github-access"
+const component = "robot-github-hook-dispatcher"
 
 type options struct {
 	service liboptions.ServiceOptions

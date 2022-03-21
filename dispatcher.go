@@ -60,8 +60,8 @@ func (d *dispatcher) dispatch(eventType string, payload []byte, h http.Header, l
 	org, repo := "", ""
 
 	switch hook := hook.(type) {
-	case *github.IssueEvent:
-		org, repo = githubclient.GetOrgRepo(hook.GetIssue().GetRepository())
+	case *github.IssuesEvent:
+		org, repo = githubclient.GetOrgRepo(hook.GetRepo())
 	case *github.IssueCommentEvent:
 		org, repo = githubclient.GetOrgRepo(hook.GetRepo())
 	case *github.PullRequestEvent:
@@ -71,9 +71,11 @@ func (d *dispatcher) dispatch(eventType string, payload []byte, h http.Header, l
 	case *github.PullRequestReviewCommentEvent:
 		org, repo = githubclient.GetOrgRepo(hook.GetRepo())
 	case *github.PushEvent:
-		org = hook.GetRepo().GetOwner().GetName()
+		org = hook.GetRepo().GetOwner().GetLogin()
 		repo = hook.GetRepo().GetName()
 	case *github.StatusEvent:
+		org, repo = githubclient.GetOrgRepo(hook.GetRepo())
+	case *github.CommitCommentEvent:
 		org, repo = githubclient.GetOrgRepo(hook.GetRepo())
 	default:
 		l.Debug("Ignoring unknown event type")
