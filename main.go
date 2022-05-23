@@ -2,12 +2,14 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
 
 	"github.com/opensourceways/community-robot-lib/config"
 	"github.com/opensourceways/community-robot-lib/interrupts"
+	"github.com/opensourceways/community-robot-lib/kafka"
 	"github.com/opensourceways/community-robot-lib/logrusutil"
 	"github.com/opensourceways/community-robot-lib/mq"
 	liboptions "github.com/opensourceways/community-robot-lib/options"
@@ -19,9 +21,14 @@ const component = "robot-github-hook-dispatcher"
 
 type options struct {
 	service liboptions.ServiceOptions
+	topic   string
 }
 
 func (o *options) Validate() error {
+	if o.topic == "" {
+		return fmt.Errorf("please set topic")
+	}
+
 	return o.service.Validate()
 }
 
@@ -29,6 +36,8 @@ func gatherOptions(fs *flag.FlagSet, args ...string) options {
 	var o options
 
 	o.service.AddFlags(fs)
+
+	fs.StringVar(&o.topic, "topic", "", "The topic to which github webhook messages need to be published ")
 
 	_ = fs.Parse(args)
 
@@ -61,11 +70,11 @@ func main() {
 		logrus.WithError(err).Fatal("Error init broker.")
 	}
 
-	defer mq.Disconnect()
+	defer kafka.Disconnect()
 
-	subscriber, err := mq.Subscribe("github-webhook", handleGiteeMessage(&d), mq.Queue(component))
+	subscriber, err := kafka.Subscribe(o.topic, handleGiteeMessage(&d), mq.Queue(component))
 	if err != nil {
-		logrus.WithError(err).Fatal("error subscribe github-webhook topic.")
+		logrus.WithError(err).Fatal(fmt.Sprintf("error subscribe %s topic.", o.topic))
 	}
 
 	defer subscriber.Unsubscribe()
@@ -89,5 +98,4 @@ func main() {
 	httpServer := &http.Server{Addr: ":" + strconv.Itoa(o.service.Port)}
 
 	interrupts.ListenAndServe(httpServer, o.service.GracePeriod)
-
 }
